@@ -1,26 +1,107 @@
 @import "tailwindcss";
 
+@theme {
+  --color-moss: #6A6A53;
+  --color-mahogany: #4D342D;
+  --color-olive: #9B9879;
+  --color-eggshell: #EDE7DB;
+  --color-linen: #DDCCB7;
+  
+  --color-background: var(--color-eggshell);
+  --color-foreground: var(--color-mahogany);
+  
+  --font-sans: "Outfit", var(--font-geist-sans), Inter, sans-serif;
+  --font-serif: "Playfair Display", serif;
+}
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #EDE7DB;
+  --foreground: #4D342D;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/* Hide Scrollbar across browsers */
+::-webkit-scrollbar {
+  display: none; /* WebKit (Chrome, Safari, etc.) */
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html, body {
+  -ms-overflow-style: none; /* IE/Edge */
+  scrollbar-width: none; /* Firefox */
 }
 
+/* Base Body Styles */
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--color-eggshell);
+  color: var(--color-mahogany);
+  font-family: var(--font-sans);
+  overflow-x: hidden;
+  position: relative;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
+
+/* Smooth Transitions */
+::selection {
+  background: var(--color-linen);
+  color: var(--color-mahogany);
+}
+
+.font-serif {
+  font-family: var(--font-serif);
+}
+
+.page-transition {
+  transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Magnetic Link */
+.magnetic-target {
+  display: inline-block;
+  transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+/* Custom Theme Image Toggling */
+.hero-night-image {
+  opacity: 0;
+  visibility: hidden;
+}
+.hero-day-image {
+  opacity: 1;
+  visibility: visible;
+}
+
+.dark .hero-night-image {
+  opacity: 1;
+  visibility: visible;
+}
+.dark .hero-day-image {
+  opacity: 0;
+  visibility: hidden;
+}
+
+/* Lenis Recommended CSS */
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+
+html.lenis body {
+  overflow: clip;
+}
+
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+
+.lenis.lenis-smooth [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+
+.lenis.lenis-stopped {
+  overflow: hidden;
+}
+
+.lenis.lenis-scrolling iframe {
+  pointer-events: none;
+}
+
