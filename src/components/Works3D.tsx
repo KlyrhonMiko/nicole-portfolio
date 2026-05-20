@@ -6,6 +6,21 @@ import { CameraControls, Environment, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
+// Suppress THREE.Clock deprecation warning from third-party libraries (R3F, Drei, etc.)
+if (typeof window !== "undefined") {
+  const originalWarn = console.warn;
+  console.warn = (...args) => {
+    if (
+      args[0] &&
+      typeof args[0] === "string" &&
+      args[0].includes("THREE.Clock")
+    ) {
+      return;
+    }
+    originalWarn(...args);
+  };
+}
+
 // Preload the downloaded sample interior model
 useGLTF.preload("/models/interior.glb");
 
