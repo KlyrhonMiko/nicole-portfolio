@@ -145,7 +145,6 @@ export default function ProjectShowcase({ project, onClose }: ProjectShowcasePro
       smoothWheel: true,
       syncTouch: true,
       syncTouchLerp: 0.075,
-      touchInertiaMultiplier: 25,
       touchMultiplier: 1.8,
     });
 

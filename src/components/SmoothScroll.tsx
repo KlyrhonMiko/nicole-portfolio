@@ -50,7 +50,6 @@ export default function SmoothScroll({ children }: { children: React.ReactNode }
         wheelMultiplier: 1.0,
         syncTouch: true,        // Enables smooth touch scrolling on mobile via lerp sync
         syncTouchLerp: 0.075,   // Lower = smoother but slightly delayed; 0.075 is a good mobile feel
-        touchInertiaMultiplier: 25, // Natural momentum/inertia after a swipe
         touchMultiplier: 1.8,   // Amplify touch delta so swiping doesn't feel sluggish
         gestureOrientation: "vertical",
       }}
