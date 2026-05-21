@@ -4,7 +4,6 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 import { useTheme } from "next-themes";
-import { Moon, Sun } from "lucide-react";
 import { useLenis } from "lenis/react";
 
 export default function Navbar() {
@@ -17,15 +16,6 @@ export default function Navbar() {
   const navRef = useRef<HTMLElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
   const menuTl = useRef<gsap.core.Timeline | null>(null);
-  const themeBtnRef = useRef<HTMLButtonElement>(null);
-
-  useGSAP(() => {
-    gsap.fromTo(
-      themeBtnRef.current,
-      { opacity: 0, y: 10 },
-      { opacity: 1, y: 0, duration: 0.8, delay: 2.5, ease: "power3.out" }
-    );
-  });
 
   const navItems = [
     { label: "Works", id: "works-3d" },
@@ -351,36 +341,6 @@ export default function Navbar() {
           </div>
         </div>
       </header>
-
-      {/* ── Fixed Floating Theme Toggle ── */}
-      <button
-        ref={themeBtnRef}
-        onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
-        className={`fixed bottom-8 sm:bottom-12 left-6 sm:left-10 md:left-14 z-40 flex items-center rounded-full border border-[#DDCCB7]/20 bg-[#4D342D]/20 backdrop-blur-md shadow-lg transition-all duration-500 hover:bg-[#4D342D]/40 hover:border-[#DDCCB7]/40 group cursor-pointer overflow-hidden ${
-          isScrolled ? "w-10 h-10 justify-center px-0 gap-0" : "px-4 py-2.5 gap-2.5 w-[92px] justify-start"
-        }`}
-        aria-label="Toggle dark mode"
-      >
-        {/* Icon container with vertical slide */}
-        <div className="relative w-3.5 h-3.5 flex items-center justify-center overflow-hidden shrink-0">
-          <div className={`absolute transition-all duration-500 ${mounted && resolvedTheme === 'dark' ? 'translate-y-full opacity-0' : 'translate-y-0 opacity-100'}`}>
-            <Sun className="w-3.5 h-3.5 text-[#EDE7DB]" strokeWidth={1.5} />
-          </div>
-          <div className={`absolute transition-all duration-500 ${mounted && resolvedTheme === 'dark' ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0'}`}>
-            <Moon className="w-3.5 h-3.5 text-[#EDE7DB]" strokeWidth={1.5} />
-          </div>
-        </div>
-        
-        {/* Text container with vertical slide */}
-        <div className={`relative h-3.5 overflow-hidden flex items-center transition-all duration-500 ${isScrolled ? 'w-0 opacity-0' : 'w-12 opacity-100'}`}>
-           <span className={`absolute left-0 text-[8px] sm:text-[9px] tracking-[0.2em] uppercase font-light text-[#EDE7DB] transition-all duration-500 ${mounted && resolvedTheme === 'dark' ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0'}`}>
-             Night
-           </span>
-           <span className={`absolute left-0 text-[8px] sm:text-[9px] tracking-[0.2em] uppercase font-light text-[#EDE7DB] transition-all duration-500 ${mounted && resolvedTheme !== 'dark' ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0'}`}>
-             Day
-           </span>
-        </div>
-      </button>
 
       {/* ── Full-Screen Overlay Menu ── */}
       {isOpen && (

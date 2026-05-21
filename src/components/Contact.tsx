@@ -105,7 +105,7 @@ export default function Contact() {
             Inquiries
           </p>
 
-          <div className="overflow-hidden">
+          <div className="overflow-hidden px-6 -mx-6">
             <h2 className="contact-title-word font-serif italic text-[clamp(3rem,10vw,7rem)] leading-[0.9] text-[#4D342D] font-light lowercase tracking-tight">
               connect
             </h2>

@@ -74,7 +74,16 @@ function Model({ modelUrl, scale, position }: { modelUrl: string, scale: number,
   
   // Clone the scene so that multiple instances of the same model can be rendered simultaneously.
   // useMemo ensures cloning only happens when the scene object itself changes.
-  const clonedScene = useMemo(() => scene.clone(), [scene]);
+  const clonedScene = useMemo(() => {
+    const clone = scene.clone();
+    clone.traverse((child) => {
+      if ((child as THREE.Mesh).isMesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+      }
+    });
+    return clone;
+  }, [scene]);
 
   return (
     <primitive 
@@ -86,6 +95,8 @@ function Model({ modelUrl, scale, position }: { modelUrl: string, scale: number,
 }
 
 export default function Works3D() {
+  const sectionRef = useRef<HTMLDivElement>(null);
+  const [inViewport, setInViewport] = useState(false);
   const controlsRef = useRef<CameraControls>(null);
   
   // Track the continuous virtual index for 3D layout and camera panning
@@ -101,6 +112,22 @@ export default function Works3D() {
   const [isTransitioning, setIsTransitioning] = useState(false);
 
   const activeWork = WORKS[displayWorkIndex];
+
+  // Enable/disable rendering based on viewport visibility to save huge GPU overhead
+  useEffect(() => {
+    if (!sectionRef.current) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setInViewport(entry.isIntersecting);
+      },
+      {
+        rootMargin: "200px", // Trigger 200px before scrolling in, so it's fully loaded when visible
+        threshold: 0.01
+      }
+    );
+    observer.observe(sectionRef.current);
+    return () => observer.disconnect();
+  }, []);
 
   const handleWorkSwitch = (nextVirtualIndex: number) => {
     if (isTransitioning) return;
@@ -172,8 +199,10 @@ export default function Works3D() {
     }
   };
 
-  // Enable keyboard navigation (ArrowLeft/ArrowRight)
+  // Enable keyboard navigation (ArrowLeft/ArrowRight) only when the section is in view
   useEffect(() => {
+    if (!inViewport) return;
+
     const handleKeyDown = (e: KeyboardEvent) => {
       if (isTransitioning) return;
       if (e.key === "ArrowRight") {
@@ -184,36 +213,39 @@ export default function Works3D() {
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [virtualIndex, isTransitioning]);
+  }, [virtualIndex, isTransitioning, inViewport]);
 
   return (
-    <section id="works-3d" className="relative w-full h-[100svh] bg-[#4D342D] overflow-hidden">
+    <section id="works-3d" ref={sectionRef} className="relative w-full h-[100svh] bg-[#4D342D] overflow-hidden">
       
       {/* 3D Canvas - Pointer events none ensures normal page scrolling passes right through to Lenis */}
       <div className="absolute inset-0 pointer-events-none">
-        <Canvas shadows={{ type: THREE.PCFShadowMap }} camera={{ position: [0, 10, 10], fov: 45 }}>
-          <CameraControls 
-            ref={controlsRef} 
-            // Disable all manual user interactions so it acts purely as a backdrop
-            mouseButtons={{ left: 0, middle: 0, right: 0, wheel: 0 }}
-            touches={{ one: 0, two: 0, three: 0 }}
-          />
-          <Suspense fallback={null}>
-            <Environment preset="city" />
-            <ambientLight intensity={0.6} />
-            <directionalLight position={[8, 12, 6]} intensity={1.2} castShadow />
+        {inViewport && (
+          <Canvas shadows={{ type: THREE.PCFShadowMap }} camera={{ position: [0, 10, 10], fov: 45 }}>
+            <CameraControls 
+              ref={controlsRef} 
+              // Disable all manual user interactions so it acts purely as a backdrop
+              mouseButtons={{ left: 0, middle: 0, right: 0, wheel: 0 }}
+              touches={{ one: 0, two: 0, three: 0 }}
+            />
+            <Suspense fallback={null}>
+              <Environment preset="city" />
+              <ambientLight intensity={0.6} />
+              <directionalLight position={[8, 12, 6]} intensity={1.2} castShadow />
 
-            {WORKS.map((work, idx) => (
-              <Model 
-                key={work.id} 
-                modelUrl={work.modelUrl} 
-                scale={work.scale} 
-                position={[getModelX(idx, virtualIndex, WORKS.length), work.position[1], work.position[2]]} 
-              />
-            ))}
-          </Suspense>
-        </Canvas>
+              {WORKS.map((work, idx) => (
+                <Model 
+                  key={work.id} 
+                  modelUrl={work.modelUrl} 
+                  scale={work.scale} 
+                  position={[getModelX(idx, virtualIndex, WORKS.length), work.position[1], work.position[2]]} 
+                />
+              ))}
+            </Suspense>
+          </Canvas>
+        )}
       </div>
+
 
       {/* UI Overlay */}
       <div className="absolute inset-0 pointer-events-none flex flex-col justify-center items-start z-10 p-6 md:p-12">
