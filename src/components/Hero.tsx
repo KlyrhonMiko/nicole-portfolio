@@ -256,7 +256,9 @@ export default function Hero() {
       {/* ── Theme Toggle ── */}
       <button
         onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
-        className="hero-theme-btn absolute bottom-8 sm:bottom-12 left-6 sm:left-10 md:left-14 z-40 flex items-center rounded-full border border-[#DDCCB7]/20 bg-[#4D342D]/20 backdrop-blur-md shadow-lg transition-all duration-500 hover:bg-[#4D342D]/40 hover:border-[#DDCCB7]/40 group cursor-pointer overflow-hidden px-4 py-2.5 gap-2.5 w-[92px] justify-start opacity-0"
+        className={`hero-theme-btn absolute bottom-8 sm:bottom-12 left-6 sm:left-10 md:left-14 z-40 flex items-center rounded-full border border-[#DDCCB7]/20 bg-[#4D342D]/20 backdrop-blur-md shadow-lg transition-all duration-500 hover:bg-[#4D342D]/40 hover:border-[#DDCCB7]/40 group cursor-pointer overflow-hidden px-4 py-2.5 gap-2.5 justify-start opacity-0 ${
+          mounted && resolvedTheme === "dark" ? "w-[92px]" : "w-[80px]"
+        }`}
         aria-label="Toggle dark mode"
       >
         {/* Icon container with vertical slide */}
@@ -270,7 +272,7 @@ export default function Hero() {
         </div>
         
         {/* Text container with vertical slide */}
-        <div className="relative h-3.5 overflow-hidden flex items-center transition-all duration-500 w-12 opacity-100">
+        <div className="relative h-3.5 overflow-hidden flex items-center transition-all duration-500 w-full opacity-100">
            <span className={`absolute left-0 text-[8px] sm:text-[9px] tracking-[0.2em] uppercase font-light text-[#EDE7DB] transition-all duration-500 ${mounted && resolvedTheme === 'dark' ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0'}`}>
              Night
            </span>
