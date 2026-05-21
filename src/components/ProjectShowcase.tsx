@@ -143,6 +143,10 @@ export default function ProjectShowcase({ project, onClose }: ProjectShowcasePro
       content: scrollContainerRef.current.firstElementChild as HTMLElement,
       duration: 1.2,
       smoothWheel: true,
+      syncTouch: true,
+      syncTouchLerp: 0.075,
+      touchInertiaMultiplier: 25,
+      touchMultiplier: 1.8,
     });
 
     const raf = (time: number) => {
@@ -196,7 +200,7 @@ export default function ProjectShowcase({ project, onClose }: ProjectShowcasePro
       {/* Close Button — editorial, minimal */}
       <button
         onClick={handleClose}
-        className="fixed top-6 right-6 md:top-10 md:right-10 z-[10001] flex items-center gap-3 group cursor-pointer"
+        className="fixed top-4 right-4 sm:top-6 sm:right-6 md:top-10 md:right-10 z-[10001] flex items-center gap-3 group cursor-pointer"
         style={{ color: project.textColor }}
         aria-label="Close project"
       >
@@ -256,7 +260,7 @@ export default function ProjectShowcase({ project, onClose }: ProjectShowcasePro
             />
 
             {/* Hero Typography — matching the site's editorial system */}
-            <div className="absolute bottom-0 left-0 right-0 px-6 md:px-16 lg:px-24 pb-12 md:pb-20">
+            <div className="absolute bottom-0 left-0 right-0 px-4 sm:px-6 md:px-16 lg:px-24 pb-8 sm:pb-12 md:pb-20">
               <p className="font-sans text-[9px] sm:text-[10px] md:text-[11px] tracking-[0.55em] uppercase font-light mb-4 md:mb-6 opacity-50">
                 {project.category}
               </p>
@@ -275,7 +279,7 @@ export default function ProjectShowcase({ project, onClose }: ProjectShowcasePro
             </div>
 
             {/* Scroll hint */}
-            <div className="absolute bottom-6 md:bottom-10 right-6 md:right-16 lg:right-24 flex flex-col items-center gap-2 opacity-40">
+            <div className="absolute bottom-4 sm:bottom-6 md:bottom-10 right-4 sm:right-6 md:right-16 lg:right-24 flex flex-col items-center gap-2 opacity-40">
               <span className="font-sans text-[8px] tracking-[0.3em] uppercase">Scroll</span>
               <div
                 className="w-px h-8 bg-gradient-to-b from-current to-transparent"
@@ -287,7 +291,7 @@ export default function ProjectShowcase({ project, onClose }: ProjectShowcasePro
               PROJECT DETAILS — Editorial meta bar
           ═══════════════════════════════════════════════════ */}
           <div className="relative" style={{ backgroundColor: project.color }}>
-            <div className="max-w-[1400px] mx-auto px-6 md:px-16 lg:px-24">
+            <div className="max-w-[1400px] mx-auto px-4 sm:px-6 md:px-16 lg:px-24">
               <div
                 className="grid grid-cols-2 md:grid-cols-4 py-10 md:py-14"
                 style={{ borderBottom: `1px solid ${project.textColor}10` }}
@@ -319,7 +323,7 @@ export default function ProjectShowcase({ project, onClose }: ProjectShowcasePro
             className="relative py-24 md:py-36"
             style={{ backgroundColor: project.color }}
           >
-            <div className="max-w-[1400px] mx-auto px-6 md:px-16 lg:px-24 text-center">
+            <div className="max-w-[1400px] mx-auto px-4 sm:px-6 md:px-16 lg:px-24 text-center">
               <p className="font-sans text-[9px] sm:text-[10px] tracking-[0.55em] uppercase opacity-35 mb-8 md:mb-10" data-reveal>
                 Design Concept
               </p>
@@ -349,7 +353,7 @@ export default function ProjectShowcase({ project, onClose }: ProjectShowcasePro
             className="relative py-16 md:py-24"
             style={{ backgroundColor: project.color }}
           >
-            <div className="max-w-[1400px] mx-auto px-6 md:px-16 lg:px-24">
+            <div className="max-w-[1400px] mx-auto px-4 sm:px-6 md:px-16 lg:px-24">
               <div className="flex items-center gap-4 mb-8 md:mb-12" data-reveal>
                 <div
                   className="w-12 h-px origin-left"
@@ -383,7 +387,7 @@ export default function ProjectShowcase({ project, onClose }: ProjectShowcasePro
             className="relative py-16 md:py-24"
             style={{ backgroundColor: project.color }}
           >
-            <div className="max-w-[1400px] mx-auto px-6 md:px-16 lg:px-24">
+            <div className="max-w-[1400px] mx-auto px-4 sm:px-6 md:px-16 lg:px-24">
               <div className="flex items-center gap-4 mb-8 md:mb-12" data-reveal>
                 <div
                   className="w-12 h-px origin-left"
@@ -443,7 +447,7 @@ export default function ProjectShowcase({ project, onClose }: ProjectShowcasePro
               return (
                 <div
                   key={i}
-                  className="max-w-[1400px] mx-auto px-6 md:px-16 lg:px-24 py-16 md:py-28"
+                  className="max-w-[1400px] mx-auto px-4 sm:px-6 md:px-16 lg:px-24 py-12 sm:py-16 md:py-28"
                   style={{
                     borderTop: i === 0 ? `1px solid ${project.textColor}08` : "none",
                   }}
@@ -515,8 +519,8 @@ export default function ProjectShowcase({ project, onClose }: ProjectShowcasePro
             className="relative py-20 md:py-32"
             style={{ backgroundColor: project.color }}
           >
-            <div className="max-w-[1400px] mx-auto px-6 md:px-16 lg:px-24">
-              <div className="flex items-center gap-4 mb-12 md:mb-16" data-reveal>
+            <div className="max-w-[1400px] mx-auto px-4 sm:px-6 md:px-16 lg:px-24">
+              <div className="flex items-center gap-4 mb-8 sm:mb-12 md:mb-16" data-reveal>
                 <div
                   className="w-12 h-px origin-left"
                   style={{ backgroundColor: `${project.textColor}20` }}
@@ -527,11 +531,11 @@ export default function ProjectShowcase({ project, onClose }: ProjectShowcasePro
                 </span>
               </div>
 
-              <div className="flex flex-wrap gap-10 md:gap-16" data-reveal>
+              <div className="flex flex-wrap gap-6 sm:gap-10 md:gap-16" data-reveal>
                 {project.materials.map((mat, i) => (
-                  <div key={i} className="flex flex-col items-center gap-4 group">
+                  <div key={i} className="flex flex-col items-center gap-3 sm:gap-4 group">
                     <div
-                      className="w-20 h-20 md:w-24 md:h-24 rounded-full transition-transform duration-500 group-hover:scale-110"
+                      className="w-14 h-14 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-full transition-transform duration-500 group-hover:scale-110"
                       style={{
                         backgroundColor: mat.color,
                         boxShadow: `inset 0 2px 8px rgba(0,0,0,0.12), 0 2px 12px ${mat.color}40`,
@@ -556,7 +560,7 @@ export default function ProjectShowcase({ project, onClose }: ProjectShowcasePro
               borderTop: `1px solid ${project.textColor}08`,
             }}
           >
-            <div className="max-w-[1400px] mx-auto px-6 md:px-16 lg:px-24 flex items-center justify-between" data-reveal>
+            <div className="max-w-[1400px] mx-auto px-4 sm:px-6 md:px-16 lg:px-24 flex items-center justify-between" data-reveal>
               <button
                 onClick={handleClose}
                 className="flex items-center gap-4 group cursor-pointer"

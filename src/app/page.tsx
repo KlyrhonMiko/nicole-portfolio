@@ -11,6 +11,7 @@ import dynamic from "next/dynamic";
 // Dynamically import Works3D to prevent loading heavy Three.js bundles and 4MB GLTF model on initial page mount.
 const Works3D = dynamic(() => import("@/components/Works3D"), {
   ssr: false,
+  loading: () => <div className="w-full h-[100svh] min-h-[500px] bg-[#4D342D]" />
 });
 
 export default function Home() {

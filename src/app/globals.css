@@ -86,7 +86,12 @@ html.lenis body {
 }
 
 html.lenis body {
-  overflow: clip;
+  overflow: hidden; /* 'clip' can trap touch events on mobile; 'hidden' is safer */
+}
+
+/* Ensure touch scrolling is never blocked by browser gesture handling */
+html.lenis {
+  touch-action: pan-y;
 }
 
 .lenis.lenis-smooth {

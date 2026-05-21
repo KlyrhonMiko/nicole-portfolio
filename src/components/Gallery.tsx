@@ -444,12 +444,16 @@ export default function Gallery() {
           .to({}, { duration: 0.8 });
       });
 
+      // Use shorter scroll distance on mobile where swiping covers less distance
+      const isMobile = window.innerWidth < 768;
+      const scrollDistance = isMobile ? 2500 : 4000;
+
       ScrollTrigger.create({
         animation: tl,
         trigger: containerRef.current,
         start: "top top",
-        end: "+=4000", // Long scroll to accommodate the sequential pauses
-        scrub: 0.5,
+        end: `+=${scrollDistance}`,
+        scrub: isMobile ? 0.8 : 0.5, // Slightly higher scrub on mobile for smoother touch feel
         pin: true,
         anticipatePin: 1,
         invalidateOnRefresh: true
@@ -469,21 +473,21 @@ export default function Gallery() {
 
   return (
     <>
-      <section id="gallery" ref={sectionRef} className="relative bg-[#EDE7DB]">
+      <section id="gallery" ref={sectionRef} className="relative bg-[#EDE7DB] overflow-hidden" style={{ touchAction: "pan-y" }}>
         <div
           ref={containerRef}
-          className="relative h-screen w-full overflow-hidden flex items-center justify-end pr-8 md:pr-24 lg:pr-40"
+          className="relative h-screen w-full overflow-hidden flex items-center justify-center md:justify-end px-4 sm:px-8 md:pr-24 lg:pr-40"
         >
           {/* Background Typography */}
-          <div className="absolute inset-0 flex flex-col items-start justify-center pl-8 md:pl-24 pointer-events-none z-0 opacity-10">
-            <h2 className="font-serif italic text-[18vw] text-[#4D342D] tracking-tighter leading-none">
+          <div className="absolute inset-0 flex flex-col items-start justify-center pl-4 sm:pl-8 md:pl-24 pointer-events-none z-0 opacity-10">
+            <h2 className="font-serif italic text-[20vw] sm:text-[18vw] text-[#4D342D] tracking-tighter leading-none">
               gallery
             </h2>
           </div>
 
           {/* Swatch Stack Container */}
           <div
-            className="relative z-10 h-[75vh] md:h-[80vh] lg:h-[85vh] aspect-[3/4] max-w-[90vw] max-h-[90vh] -rotate-2"
+            className="relative z-10 h-[60vh] sm:h-[68vh] md:h-[80vh] lg:h-[85vh] aspect-[3/4] max-w-[85vw] sm:max-w-[75vw] md:max-w-[50vw] max-h-[85vh] -rotate-2"
           >
             {SWATCHES.map((swatch, i) => (
               <div
@@ -495,34 +499,34 @@ export default function Gallery() {
                 style={{
                   backgroundColor: swatch.color,
                   color: swatch.textColor,
-                  transformOrigin: "calc(100% - 32px) 32px", // Pivot at top right
+                  transformOrigin: "calc(100% - 24px) 24px", // Pivot at top right
                   zIndex: SWATCHES.length - i,
                   backfaceVisibility: "hidden"
                 }}
                 onClick={() => handleSwatchClick(swatch)}
               >
                 {/* The Pin */}
-                <div className="absolute top-[16px] right-[16px] md:top-[24px] md:right-[24px] w-6 h-6 rounded-full bg-[#1A1410] shadow-[inset_0_2px_4px_rgba(255,255,255,0.3)] flex items-center justify-center z-20">
+                <div className="absolute top-[12px] right-[12px] sm:top-[16px] sm:right-[16px] md:top-[24px] md:right-[24px] w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-[#1A1410] shadow-[inset_0_2px_4px_rgba(255,255,255,0.3)] flex items-center justify-center z-20">
                   <div className="w-full h-px bg-white/20 transform rotate-45" />
                 </div>
 
                 {swatch.isCover ? (
                   // Cover Design
-                  <div className="flex-1 flex flex-col items-center justify-center p-4 md:p-8 text-center border-2 border-transparent">
-                    <span className="font-sans text-[10px] md:text-xs tracking-[0.4em] uppercase opacity-50 mb-6 lg:mb-8">
+                  <div className="flex-1 flex flex-col items-center justify-center p-3 sm:p-4 md:p-8 text-center border-2 border-transparent">
+                    <span className="font-sans text-[9px] sm:text-[10px] md:text-xs tracking-[0.4em] uppercase opacity-50 mb-4 sm:mb-6 lg:mb-8">
                       {swatch.category}
                     </span>
-                    <h3 className="font-serif italic text-4xl md:text-5xl lg:text-6xl tracking-wide leading-tight mb-8 lg:mb-10">
+                    <h3 className="font-serif italic text-3xl sm:text-4xl md:text-5xl lg:text-6xl tracking-wide leading-tight mb-5 sm:mb-8 lg:mb-10">
                       {swatch.title}
                     </h3>
-                    <div className="w-12 h-px bg-current opacity-20" />
-                    <span className="mt-8 font-sans text-[10px] md:text-xs tracking-[0.2em] uppercase opacity-40">
+                    <div className="w-10 sm:w-12 h-px bg-current opacity-20" />
+                    <span className="mt-5 sm:mt-8 font-sans text-[9px] sm:text-[10px] md:text-xs tracking-[0.2em] uppercase opacity-40">
                       Made to Measure
                     </span>
                   </div>
                 ) : (
                   // Content Card Design
-                  <div className="flex-1 flex flex-col p-3 md:p-5 pt-[50px] md:pt-[64px]">
+                  <div className="flex-1 flex flex-col p-2.5 sm:p-3 md:p-5 pt-[40px] sm:pt-[50px] md:pt-[64px]">
                     {/* Image */}
                     <div className="flex-1 relative overflow-hidden mb-3 md:mb-4 bg-black/5 rounded-sm shadow-inner group">
                       <img
@@ -544,7 +548,7 @@ export default function Gallery() {
                         <span className="font-sans text-[9px] md:text-[10px] tracking-[0.3em] uppercase opacity-60 mb-2 block">
                           {swatch.category} — {String(i).padStart(2, '0')}
                         </span>
-                        <h3 className="font-serif text-lg md:text-2xl italic tracking-wide">
+                        <h3 className="font-serif text-base sm:text-lg md:text-2xl italic tracking-wide">
                           {swatch.title}
                         </h3>
                       </div>
@@ -556,11 +560,11 @@ export default function Gallery() {
           </div>
 
           {/* Scroll indicator */}
-          <div className="absolute bottom-10 left-1/2 -translate-x-1/2 text-center pointer-events-none z-0">
-            <p className="font-sans text-[9px] md:text-[10px] tracking-[0.3em] uppercase text-[#6A6A53]/60">
+          <div className="absolute bottom-6 sm:bottom-10 left-1/2 -translate-x-1/2 text-center pointer-events-none z-0">
+            <p className="font-sans text-[8px] sm:text-[9px] md:text-[10px] tracking-[0.3em] uppercase text-[#6A6A53]/60">
               Scroll to unroll
             </p>
-            <div className="w-px h-12 md:h-16 bg-gradient-to-b from-[#6A6A53]/40 to-transparent mx-auto mt-4" />
+            <div className="w-px h-8 sm:h-12 md:h-16 bg-gradient-to-b from-[#6A6A53]/40 to-transparent mx-auto mt-3 sm:mt-4" />
           </div>
         </div>
       </section>
