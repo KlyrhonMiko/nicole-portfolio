@@ -1,10 +1,28 @@
 "use client";
 
-import { useRef, useState, Suspense, useMemo, useEffect } from "react";
+import React, { useRef, useState, Suspense, useMemo, useEffect, useCallback } from "react";
 import { Canvas } from "@react-three/fiber";
-import { CameraControls, Environment, useGLTF, Center } from "@react-three/drei";
+import { CameraControls, Environment, useGLTF, Center, Clone } from "@react-three/drei";
 import * as THREE from "three";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+
+// ── Error Boundary for WebGL context failures ──
+class WebGLErrorBoundary extends React.Component<
+  { children: React.ReactNode; fallback: React.ReactNode },
+  { hasError: boolean }
+> {
+  constructor(props: { children: React.ReactNode; fallback: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  render() {
+    if (this.state.hasError) return this.props.fallback;
+    return this.props.children;
+  }
+}
 
 // Suppress THREE.Clock deprecation warning from third-party libraries (R3F, Drei, etc.)
 if (typeof window !== "undefined") {
@@ -21,8 +39,9 @@ if (typeof window !== "undefined") {
   };
 }
 
-// Preload the downloaded sample interior model
-useGLTF.preload("/models/interior.glb");
+// NOTE: No module-level useGLTF.preload() here — it was fetching+parsing a 4MB GLTF
+// on the main thread during page load, causing the hero entrance animation to stutter.
+// Preloading is deferred to when the section is near the viewport (see IntersectionObserver below).
 
 // Data structure for multiple works/models
 const WORKS = [
@@ -48,17 +67,6 @@ const WORKS = [
       { id: "lobby", title: "Main Lobby", position: [0, 0.5, 2], lookAt: [0, 0.8, 0] },
       { id: "suite", title: "Suite 101", position: [-2, 1.5, -1], lookAt: [-1, 1.5, -1] }
     ]
-  },
-  {
-    id: "work-3",
-    title: "Nomad Cafe",
-    modelUrl: "/models/interior.glb", // Using same sample for now, client can replace
-    scale: 0.015,
-    position: [0, 0, 0] as [number, number, number],
-    pois: [
-      { id: "bar", title: "Coffee Bar", position: [1, 0.5, 1], lookAt: [0, 0.5, 0] },
-      { id: "seating", title: "Lounge", position: [-1, 0.5, 2], lookAt: [0, 0.5, 1] }
-    ]
   }
 ];
 
@@ -72,33 +80,35 @@ const getModelX = (modelIndex: number, currentVirtualIndex: number, totalModels:
 function Model({ modelUrl, scale, position }: { modelUrl: string, scale: number, position: [number, number, number] }) {
   const { scene } = useGLTF(modelUrl);
   
-  // Clone the scene so that multiple instances of the same model can be rendered simultaneously.
-  // useMemo ensures cloning only happens when the scene object itself changes.
-  const clonedScene = useMemo(() => {
-    const clone = scene.clone();
-    clone.traverse((child) => {
-      if ((child as THREE.Mesh).isMesh) {
-        child.castShadow = true;
-        child.receiveShadow = true;
-      }
-    });
-    return clone;
-  }, [scene]);
-
   return (
     <Center position={position}>
-      <primitive 
-        object={clonedScene} 
-        scale={scale} 
-      />
+      <Clone object={scene} scale={scale} castShadow receiveShadow />
     </Center>
   );
+}
+
+function ModelLoadedNotifier({ onLoaded }: { onLoaded: () => void }) {
+  useEffect(() => {
+    onLoaded();
+  }, [onLoaded]);
+  return null;
 }
 
 export default function Works3D() {
   const sectionRef = useRef<HTMLDivElement>(null);
   const [inViewport, setInViewport] = useState(false);
   const controlsRef = useRef<CameraControls>(null);
+  const glRef = useRef<THREE.WebGLRenderer | null>(null);
+
+  // Explicitly dispose the WebGL renderer on unmount to free the context
+  useEffect(() => {
+    return () => {
+      if (glRef.current) {
+        glRef.current.dispose();
+        glRef.current = null;
+      }
+    };
+  }, []);
   
   // Track mobile layout for responsive camera distance
   const [isMobile, setIsMobile] = useState(typeof window !== "undefined" ? window.innerWidth < 768 : false);
@@ -124,9 +134,41 @@ export default function Works3D() {
   // State to manage model switching transitions (primarily for text overlays)
   const [isTransitioning, setIsTransitioning] = useState(false);
 
+  // State to track if the 3D models are fully loaded and parsed
+  const [modelReady, setModelReady] = useState(false);
+
+  const handleModelLoaded = useCallback(() => {
+    // Slight delay to ensure GPU upload finishes smoothly before fading in
+    setTimeout(() => setModelReady(true), 150);
+  }, []);
+
   const activeWork = WORKS[displayWorkIndex];
 
-  // Enable/disable rendering based on viewport visibility to save huge GPU overhead
+  // Defer heavy 3D initialization to prevent main-thread stutter during the Hero entrance animation.
+  // We allow loading if the user scrolls, or after a fixed timeout (4s is enough for Hero animation to finish).
+  const [canLoad, setCanLoad] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > 10) {
+        setCanLoad(true);
+      }
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    if (window.scrollY > 10) setCanLoad(true);
+
+    const timer = setTimeout(() => {
+      setCanLoad(true);
+    }, 3500);
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      clearTimeout(timer);
+    };
+  }, []);
+
+  // Enable/disable rendering based on viewport visibility to save huge GPU overhead.
+  const preloadedRef = useRef(false);
   useEffect(() => {
     if (!sectionRef.current) return;
     const observer = new IntersectionObserver(
@@ -134,7 +176,7 @@ export default function Works3D() {
         setInViewport(entry.isIntersecting);
       },
       {
-        rootMargin: "200px", // Trigger 200px before scrolling in, so it's fully loaded when visible
+        rootMargin: "200px",
         threshold: 0.01
       }
     );
@@ -142,8 +184,16 @@ export default function Works3D() {
     return () => observer.disconnect();
   }, []);
 
+  // Defer GLTF preload until we are allowed to load (animation finished or scrolled)
+  useEffect(() => {
+    if (canLoad && !preloadedRef.current) {
+      preloadedRef.current = true;
+      useGLTF.preload("/models/interior.glb");
+    }
+  }, [canLoad]);
+
   const handleWorkSwitch = (nextVirtualIndex: number) => {
-    if (isTransitioning) return;
+    if (isTransitioning || !modelReady) return;
     setIsTransitioning(true);
 
     // Update virtual index instantly so the camera starts panning and models reposition
@@ -182,7 +232,7 @@ export default function Works3D() {
   };
 
   const handlePoiClick = (poi: any) => {
-    if (isTransitioning) return;
+    if (isTransitioning || !modelReady) return;
     setActivePoi(poi.id);
     if (controlsRef.current) {
       const offsetX = virtualIndex * 30;
@@ -200,7 +250,7 @@ export default function Works3D() {
   };
 
   const resetCamera = () => {
-    if (isTransitioning) return;
+    if (isTransitioning || !modelReady) return;
     setActivePoi(null);
     if (controlsRef.current) {
       const offsetX = virtualIndex * 30;
@@ -216,7 +266,7 @@ export default function Works3D() {
 
   // Enable keyboard navigation (ArrowLeft/ArrowRight) only when the section is in view
   useEffect(() => {
-    if (!inViewport) return;
+    if (!inViewport || !modelReady) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (isTransitioning) return;
@@ -228,45 +278,93 @@ export default function Works3D() {
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [virtualIndex, isTransitioning, inViewport]);
+  }, [virtualIndex, isTransitioning, inViewport, modelReady]);
 
   return (
     <section id="works-3d" ref={sectionRef} className="relative w-full h-[100svh] min-h-[500px] bg-[#4D342D] overflow-hidden" style={{ touchAction: "pan-y" }}>
       
+      {/* ── Elegant Section Loader ── */}
+      <div 
+        className={`absolute inset-0 flex items-center justify-center pointer-events-none transition-opacity duration-1000 z-50 ${
+          modelReady ? "opacity-0" : "opacity-100"
+        }`}
+      >
+        <div className="flex flex-col items-center gap-4">
+           {/* small pulse or spinner */}
+           <div className="w-4 h-4 border border-[#DDCCB7]/20 border-t-[#DDCCB7]/70 rounded-full animate-spin" />
+           <p className="font-sans text-[8px] sm:text-[9px] tracking-[0.4em] uppercase text-[#DDCCB7]/50 font-light">
+             Loading Environment
+           </p>
+        </div>
+      </div>
+
       {/* 3D Canvas - Pointer events none ensures normal page scrolling passes right through to Lenis */}
       <div className="absolute inset-0 pointer-events-none" style={{ touchAction: "none" }}>
-        {inViewport && (
-          <Canvas shadows={{ type: THREE.PCFShadowMap }} camera={{ position: [0, isMobile ? 18 : 10, isMobile ? 18 : 10], fov: 45 }}>
-            <CameraControls 
-              ref={controlsRef} 
-              // Disable all manual user interactions so it acts purely as a backdrop
-              mouseButtons={{ left: 0, middle: 0, right: 0, wheel: 0 }}
-              touches={{ one: 0, two: 0, three: 0 }}
-            />
-            <Suspense fallback={null}>
-              <Environment preset="city" />
-              <ambientLight intensity={0.6} />
-              <directionalLight position={[8, 12, 6]} intensity={1.2} castShadow />
+        {canLoad && (
+          <WebGLErrorBoundary
+            fallback={
+              <div className="w-full h-full flex items-center justify-center">
+                <p className="font-sans text-xs tracking-[0.3em] uppercase text-[#DDCCB7]/40">
+                  3D view unavailable — please refresh the page
+                </p>
+              </div>
+            }
+          >
+            <Canvas
+              className={`transition-opacity duration-1000 ${modelReady ? "opacity-100" : "opacity-0"}`}
+              frameloop="demand"
+              dpr={[1, 1.5]}
+              shadows={{ type: THREE.PCFShadowMap }}
+              camera={{ position: [0, isMobile ? 18 : 10, isMobile ? 18 : 10], fov: 45 }}
+              onCreated={({ gl }) => {
+                glRef.current = gl;
+                // Listen for WebGL context loss and restore
+                const canvas = gl.domElement;
+                canvas.addEventListener("webglcontextlost", (e) => {
+                  e.preventDefault();
+                  console.warn("WebGL context lost — will restore when available");
+                });
+                canvas.addEventListener("webglcontextrestored", () => {
+                  console.info("WebGL context restored");
+                });
+              }}
+            >
+              <CameraControls 
+                ref={controlsRef} 
+                // Disable all manual user interactions so it acts purely as a backdrop
+                mouseButtons={{ left: 0, middle: 0, right: 0, wheel: 0 }}
+                touches={{ one: 0, two: 0, three: 0 }}
+              />
+              <Suspense fallback={null}>
+                <Environment preset="city" />
+                <ambientLight intensity={0.6} />
+                <directionalLight position={[8, 12, 6]} intensity={1.2} castShadow />
 
-              {WORKS.map((work, idx) => (
-                <Model 
-                  key={work.id} 
-                  modelUrl={work.modelUrl} 
-                  scale={work.scale} 
-                  position={[getModelX(idx, virtualIndex, WORKS.length), work.position[1], work.position[2]]} 
-                />
-              ))}
-            </Suspense>
-          </Canvas>
+                {WORKS.map((work, idx) => (
+                  <Model 
+                    key={work.id} 
+                    modelUrl={work.modelUrl} 
+                    scale={work.scale} 
+                    position={[getModelX(idx, virtualIndex, WORKS.length), work.position[1], work.position[2]]} 
+                  />
+                ))}
+                
+                {/* Notifies parent when all Suspense children are fully resolved */}
+                <ModelLoadedNotifier onLoaded={handleModelLoaded} />
+              </Suspense>
+            </Canvas>
+          </WebGLErrorBoundary>
         )}
       </div>
 
 
       {/* UI Overlay */}
-      <div className="absolute inset-0 pointer-events-none flex flex-col justify-center items-start z-10 p-4 sm:p-6 md:p-12">
+      <div className={`absolute inset-0 pointer-events-none flex flex-col justify-center items-start z-10 p-4 sm:p-6 md:p-12 transition-opacity duration-1000 delay-300 ${
+        modelReady ? "opacity-100" : "opacity-0"
+      }`}>
         
         {/* Title */}
-        <div className={`absolute top-6 left-6 sm:left-10 md:top-12 md:left-24 max-w-[60%] sm:max-w-none flex flex-col items-start transition-all duration-350 ease-in-out ${
+        <div className={`absolute top-20 left-6 sm:left-10 md:top-32 md:left-24 max-w-[60%] sm:max-w-none flex flex-col items-start transition-all duration-350 ease-in-out ${
           isTransitioning ? "opacity-0 -translate-y-2" : "opacity-100 translate-y-0"
         }`}>
           <h2 className="font-serif italic text-2xl sm:text-3xl md:text-5xl text-[#EDE7DB] tracking-wide flex items-center flex-wrap">

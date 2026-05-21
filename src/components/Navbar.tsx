@@ -6,7 +6,11 @@ import gsap from "gsap";
 import { useTheme } from "next-themes";
 import { useLenis } from "lenis/react";
 
-export default function Navbar() {
+interface NavbarProps {
+  isLoaded?: boolean;
+}
+
+export default function Navbar({ isLoaded = false }: NavbarProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
@@ -16,6 +20,8 @@ export default function Navbar() {
   const navRef = useRef<HTMLElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
   const menuTl = useRef<gsap.core.Timeline | null>(null);
+  const navEntranceTl = useRef<gsap.core.Timeline | null>(null);
+  const hasPlayedRef = useRef(false);
 
   const navItems = [
     { label: "Works", id: "works-3d" },
@@ -23,16 +29,17 @@ export default function Navbar() {
     { label: "Contact", id: "contact" },
   ];
 
-  // Entrance animation synced with hero timeline
+  // Build entrance animation (paused) — plays when isLoaded becomes true
   useGSAP(
     () => {
-      const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
+      const tl = gsap.timeline({ paused: true, defaults: { ease: "power3.out" } });
+      navEntranceTl.current = tl;
 
-      // Stagger each nav element — delay synced with faster hero timeline
+      // Stagger each nav element — delay synced with hero timeline
       tl.fromTo(
         ".nav-logo-first",
         { y: -16, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.7, delay: 2.2 }
+        { y: 0, opacity: 1, duration: 0.7, delay: 0.8 }
       );
 
       tl.fromTo(
@@ -65,6 +72,17 @@ export default function Navbar() {
     },
     { scope: navRef }
   );
+
+  // Play navbar entrance when loading completes
+  useEffect(() => {
+    if (!isLoaded || hasPlayedRef.current || !navEntranceTl.current) return;
+    hasPlayedRef.current = true;
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        navEntranceTl.current?.play();
+      });
+    });
+  }, [isLoaded]);
 
   // Hydration
   useEffect(() => {

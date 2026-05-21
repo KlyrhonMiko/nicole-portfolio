@@ -1,59 +1,76 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState, useEffect, useCallback } from "react";
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 import { ArrowDown, Moon, Sun } from "lucide-react";
 import { useLenis } from "lenis/react";
 import { useTheme } from "next-themes";
-import { useState, useEffect } from "react";
 
-export default function Hero() {
+interface HeroProps {
+  isLoaded?: boolean;
+}
+
+export default function Hero({ isLoaded = false }: HeroProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const lenis = useLenis();
-  const { theme, setTheme, resolvedTheme } = useTheme();
+  const { setTheme, resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const tlRef = useRef<gsap.core.Timeline | null>(null);
+  const hasPlayedRef = useRef(false);
 
+  // ── Build the GSAP timeline (paused) ──
   useGSAP(
     () => {
-      // A tiny delay ensures the browser has finished initial paints
-      const tl = gsap.timeline({ 
+      const tl = gsap.timeline({
         paused: true,
-        defaults: { ease: "power3.out", force3D: true }, 
-        delay: 0.1 
+        defaults: { ease: "power3.out", force3D: true },
       });
-      
+
       tlRef.current = tl;
 
-      // Scale and crop are compositor-accelerated on the inner container
-      gsap.set(".hero-bg-container", {
-        scale: 0.6,
-        borderRadius: "20px",
-        willChange: "transform, border-radius",
-      });
-
-      // Translation and fade are handled on the outer wrapper
+      // ── Set initial state via GSAP so it owns all animated values ──
+      // ONLY transform + opacity are animated — the two cheapest GPU-composited properties.
+      // borderRadius is static CSS on the element (never animated = no repaints).
       gsap.set(".hero-bg-wrapper", {
         yPercent: 55,
+        scale: 0.82,
         opacity: 0,
+        force3D: true,
         willChange: "transform, opacity",
       });
 
-      // 1. Slide up the outer wrapper from below at small scale
+      // ── Phase 1 — Background reveal ──
+      // Both yPercent and scale are part of the SAME CSS `transform` property,
+      // so GSAP combines them into one matrix per frame. No new compositor
+      // property is ever introduced mid-animation (unlike clipPath which
+      // caused the stutter at the overlap point).
+
+      // Slide up + fade in
+      tl.to(".hero-bg-wrapper", {
+        yPercent: 0,
+        opacity: 1,
+        duration: 1.0,
+        ease: "power3.out",
+      });
+
+      // Scale expand (overlaps last 0.5s — same `transform` property, zero compositor cost)
       tl.to(
         ".hero-bg-wrapper",
-        { yPercent: 0, opacity: 1, duration: 1.0, ease: "power3.out" }
-      );
-
-      // 2. Expand scale to full + lose border radius — one fluid motion on the inner container
-      tl.to(
-        ".hero-bg-container",
-        { scale: 1, borderRadius: "0px", duration: 1.0, ease: "power2.inOut" },
+        {
+          scale: 1,
+          duration: 1.0,
+          ease: "power2.inOut",
+        },
         "-=0.5"
       );
 
-      // 3. Overlay fades in as image fully appears
+      // Snap away the static borderRadius once fully expanded (imperceptible at viewport scale)
+      tl.set(".hero-bg-wrapper", { borderRadius: 0 });
+
+      // ── Phase 2 — Content reveal ──
+
+      // Overlay fades in
       tl.fromTo(
         ".hero-overlay",
         { opacity: 0 },
@@ -61,23 +78,23 @@ export default function Hero() {
         "-=0.75"
       );
 
-      // 5. First name
+      // "nicole" (large serif)
       tl.fromTo(
-        ".hero-firstname",
+        ".hero-lastname",
         { yPercent: 105 },
         { yPercent: 0, duration: 1.0, ease: "power4.out" },
         "-=0.4"
       );
 
-      // 6. Last name 
+      // "Airish Moran" (small sans)
       tl.fromTo(
-        ".hero-lastname",
+        ".hero-firstname",
         { yPercent: 105 },
         { yPercent: 0, duration: 1.5, ease: "power4.out" },
         "-=0.65"
       );
 
-      // 7. Bottom accent line
+      // Bottom accent line — use scaleX (transform-only, compositor-friendly)
       tl.fromTo(
         ".hero-line-bottom",
         { scaleX: 0 },
@@ -85,7 +102,7 @@ export default function Hero() {
         "-=1.0"
       );
 
-      // 8. Tagline
+      // Tagline
       tl.fromTo(
         ".hero-tagline",
         { opacity: 0 },
@@ -93,7 +110,7 @@ export default function Hero() {
         "-=0.5"
       );
 
-      // 10. Scroll indicator
+      // Scroll indicator
       tl.fromTo(
         ".hero-scroll",
         { opacity: 0 },
@@ -101,7 +118,7 @@ export default function Hero() {
         "-=0.4"
       );
 
-      // 11. Theme toggle
+      // Theme toggle
       tl.fromTo(
         ".hero-theme-btn",
         { opacity: 0, y: 10 },
@@ -109,13 +126,12 @@ export default function Hero() {
         "-=0.4"
       );
 
-      // Release will-change after animation settles to free GPU memory
+      // Release will-change after the entire animation is done to free GPU memory
       tl.call(() => {
-        gsap.set(".hero-bg-container", { willChange: "auto" });
         gsap.set(".hero-bg-wrapper", { willChange: "auto" });
       });
 
-      // Continuous scroll bounce
+      // ── Infinite scroll-arrow bounce ──
       gsap.to(".hero-scroll-arrow", {
         y: 5,
         duration: 1.4,
@@ -124,46 +140,25 @@ export default function Hero() {
         ease: "sine.inOut",
         delay: 2.2,
       });
-      
-      // Check if images are already loaded (e.g. from cache)
-      const img1 = document.querySelector(".hero-day-image") as HTMLImageElement;
-      const img2 = document.querySelector(".hero-night-image") as HTMLImageElement;
-      if (img1?.complete && img2?.complete) {
-        tl.play();
-      }
     },
     { scope: containerRef }
   );
 
+  // ── Play the timeline once isLoaded becomes true ──
+  useEffect(() => {
+    if (!isLoaded || hasPlayedRef.current || !tlRef.current) return;
+    hasPlayedRef.current = true;
+
+    // Double-rAF lets the browser finish any pending layout / paint
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        tlRef.current?.play();
+      });
+    });
+  }, [isLoaded]);
+
   useEffect(() => {
     setMounted(true);
-
-    const img1 = document.querySelector(".hero-day-image") as HTMLImageElement;
-    const img2 = document.querySelector(".hero-night-image") as HTMLImageElement;
-    
-    let loaded = 0;
-    const checkLoaded = () => {
-      loaded += 1;
-      if (loaded >= 2) {
-        if (tlRef.current && tlRef.current.paused()) {
-          tlRef.current.play();
-        }
-      }
-    };
-
-    if (img1) {
-      if (img1.complete) checkLoaded();
-      else img1.addEventListener("load", checkLoaded);
-    }
-    if (img2) {
-      if (img2.complete) checkLoaded();
-      else img2.addEventListener("load", checkLoaded);
-    }
-
-    return () => {
-      if (img1) img1.removeEventListener("load", checkLoaded);
-      if (img2) img2.removeEventListener("load", checkLoaded);
-    };
   }, []);
 
   const scrollToNext = () => {
@@ -182,38 +177,40 @@ export default function Hero() {
       ref={containerRef}
       className="relative h-screen w-full flex items-center justify-center overflow-hidden"
     >
-      {/* Full-bleed background image container */}
+      {/* ── Background image ── */}
       <div className="absolute inset-0 z-0 flex items-center justify-center overflow-hidden">
-        {/* Double-wrapper: outer wrapper handles translation/opacity, inner handles scale/clipPath. Decoupled for hardware acceleration */}
-        <div 
-          className="hero-bg-wrapper w-full h-full relative overflow-hidden"
+        {/*
+          Single wrapper — GSAP animates ONLY transform (yPercent + scale) and opacity.
+          borderRadius is static CSS, snapped to 0 after animation ends.
+          opacity:0 inline prevents FOUC.
+        */}
+        <div
+          className="hero-bg-wrapper w-full h-full relative overflow-hidden rounded-[20px]"
           style={{ opacity: 0 }}
         >
-          <div className="hero-bg-container w-full h-full relative overflow-hidden">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/hero-day.webp"
-              alt="Luxury interior space (Day)"
-              className="hero-day-image hero-bg-image absolute inset-0 w-full h-full object-cover object-center"
-              decoding="async"
-              loading="eager"
-            />
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/hero-night.webp"
-              alt="Luxury interior space (Night)"
-              className="hero-night-image hero-bg-image absolute inset-0 w-full h-full object-cover object-center"
-              decoding="async"
-              loading="eager"
-            />
-            {/* Subtle overlay for text readability */}
-            <div className="hero-overlay absolute inset-0 bg-[#4D342D]/20 opacity-0" />
-          </div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/hero-day.webp"
+            alt="Luxury interior space (Day)"
+            className="hero-day-image hero-bg-image absolute inset-0 w-full h-full object-cover object-center"
+            decoding="async"
+            loading="eager"
+            fetchPriority="high"
+          />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/hero-night.webp"
+            alt="Luxury interior space (Night)"
+            className="hero-night-image hero-bg-image absolute inset-0 w-full h-full object-cover object-center"
+            decoding="async"
+            loading="eager"
+          />
+          {/* Subtle overlay for text readability */}
+          <div className="hero-overlay absolute inset-0 bg-[#4D342D]/20 opacity-0" />
         </div>
       </div>
 
-
-      {/* Main content */}
+      {/* ── Main content ── */}
       <div className="relative z-20 flex flex-col items-center justify-center text-center px-6 select-none w-full">
         {/* Name block */}
         <div className="relative flex flex-col items-center justify-center">
@@ -241,7 +238,7 @@ export default function Hero() {
         </p>
       </div>
 
-      {/* Scroll indicator — bottom center */}
+      {/* ── Scroll indicator ── */}
       <button
         onClick={scrollToNext}
         className="hero-scroll absolute bottom-8 sm:bottom-12 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center gap-3 opacity-0 cursor-pointer group"
@@ -270,7 +267,7 @@ export default function Hero() {
             <Moon className="w-3.5 h-3.5 text-[#EDE7DB]" strokeWidth={1.5} />
           </div>
         </div>
-        
+
         {/* Text container with vertical slide */}
         <div className="relative h-3.5 overflow-hidden flex items-center transition-all duration-500 w-full opacity-100">
            <span className={`absolute left-0 text-[8px] sm:text-[9px] tracking-[0.2em] uppercase font-light text-[#EDE7DB] transition-all duration-500 ${mounted && resolvedTheme === 'dark' ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0'}`}>
